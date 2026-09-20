@@ -1,9 +1,10 @@
 import copy
 import json
 from pathlib import Path
+import tempfile
 import unittest
 
-from check_project import evaluate_gate, validate_model
+from check_project import audit_preservation, evaluate_gate, validate_model
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -78,6 +79,43 @@ class ProjectChecks(unittest.TestCase):
         self.assertEqual(self.gate()["status"], "inconclusive")
         self.model["verification"]["calibration_required_for_auto_advance"] = False
         self.assertTrue(validate_model(self.model)[0])
+
+    def test_unapproved_preservation_break_is_invalid(self):
+        artifact = self.model["preservation"]["artifacts"][0]
+        artifact["disposition"] = "remove"
+        self.assertTrue(any("explicit approval" in issue for issue in validate_model(self.model)[0]))
+        artifact["approval"] = "USER-APPROVAL-001"
+        self.assertFalse(any("explicit approval" in issue for issue in validate_model(self.model)[0]))
+
+    def test_supersession_requires_replacement(self):
+        artifact = self.model["preservation"]["artifacts"][0]
+        artifact.update(disposition="supersede", approval="USER-APPROVAL-001")
+        self.assertTrue(any("replacement_ids" in issue for issue in validate_model(self.model)[0]))
+        artifact["replacement_ids"] = ["ART-TASK"]
+        self.assertFalse(any("replacement_ids" in issue for issue in validate_model(self.model)[0]))
+        artifact["replacement_ids"] = ["ART-MISSING"]
+        self.assertTrue(any("unknown replacement" in issue for issue in validate_model(self.model)[0]))
+
+    def test_preservation_audit_checks_declared_artifacts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            paths = [
+                root / "docs/requirements/functional/FR-01.md",
+                root / "docs/task/TASK-001.md",
+                root / "docs/implement/IMPL-TASK-001.md",
+            ]
+            for path in paths:
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text("fixture", encoding="utf-8")
+            self.assertEqual(audit_preservation(self.model, root)["status"], "valid")
+            paths[-1].unlink()
+            result = audit_preservation(self.model, root)
+            self.assertEqual(result["status"], "invalid")
+            self.assertTrue(any("ART-IMPL" in issue for issue in result["errors"]))
+
+    def test_preservation_audit_can_be_unconfigured(self):
+        self.model.pop("preservation")
+        self.assertEqual(audit_preservation(self.model, ".")["status"], "not_configured")
 
     def test_missing_or_duplicate_criteria(self):
         record = self.report["criteria"][0]
