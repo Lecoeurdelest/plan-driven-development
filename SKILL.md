@@ -1,6 +1,6 @@
 ---
 name: plan-driven-development
-description: Initialize software projects from detailed plans and continuously align requirements, architecture, tasks, code, and verification evidence. Use for plan-based scaffolding, plan updates, task context bundles, or requirement-to-code verification using NLP and AST-derived flow analysis. Preserve minimal comments and evidence-based completion gates; do not apply the full workflow to unrelated small edits.
+description: Initialize software projects from detailed plans and continuously align requirements, architecture, tasks, code, and verification evidence while preserving accepted project conventions. Use for plan-based scaffolding, migrations, plan updates, task context bundles, or requirement-to-code verification using NLP and AST-derived flow analysis. Preserve minimal comments and evidence-based completion gates; do not apply the full workflow to unrelated small edits.
 ---
 
 # Plan-Driven Development
@@ -14,12 +14,23 @@ Turn the user's maintained plan into bounded, traceable work. Keep intent, imple
 - **Implement:** compile a self-contained task bundle, perform the work, verify affected criteria, and record the outcome.
 - **Verify:** map requirements to symbols and behavior, inspect evidence, and determine whether the scoped task can advance.
 
-Read [references/project-model.md](references/project-model.md) for the model, artifacts, and lifecycle. Read [references/verification.md](references/verification.md) for logic analysis, comments, complexity, scoring, and evidence. Use [assets/project.example.json](assets/project.example.json) as a small worked model and [assets/evidence.example.json](assets/evidence.example.json) as a pending report. Do not copy example-specific product choices into unrelated projects.
+Read [references/project-model.md](references/project-model.md) for the model, artifacts, and lifecycle. Read [references/verification.md](references/verification.md) for logic analysis, comments, complexity, scoring, and evidence. Use [assets/project.example.json](assets/project.example.json) as a small worked model and [assets/evidence.example.json](assets/evidence.example.json) as a pending report. When the accepted baseline has no equivalent templates, adapt [assets/task.template.md](assets/task.template.md) and [assets/implementation.template.md](assets/implementation.template.md); never replace richer baseline templates with these generic ones. Do not copy example-specific product choices into unrelated projects.
+
+When the user identifies an existing repository, previous project, template, or workflow as accepted, read [references/preservation.md](references/preservation.md) before initializing or restructuring anything. Treat that source as a compatibility baseline, not merely inspiration.
+
+## Preserve accepted approaches
+
+- Inventory the baseline's document roles, paths, IDs, authority order, status views, task-to-implementation-to-evidence links, agent workflows, and supersession behavior before proposing a replacement.
+- Preserve accepted structures and semantics by default. Improvements are additive unless the user explicitly approves removal, semantic replacement, or an authority change.
+- Classify each affected baseline element as `preserve`, `enhance`, `supersede`, or `remove`. Record approval and replacements for `supersede` or `remove`; never infer approval from a request to improve the system.
+- Preserve historical implementation records and evidence. A task may be execution-complete and later superseded; track execution state separately from current relevance.
+- Retain human-readable requirement, technical, task, status, and implementation layers when the baseline uses them. A machine-readable model and generated bundles supplement those layers instead of collapsing them into summaries.
+- Detect and repair drift inside the preserved structure, such as stale counts, broken links, contradictory statuses, or obsolete indexes. Drift is not permission to discard the structure.
 
 ## Preserve working preferences
 
 - Use English for engineering artifacts; derive product languages and stack choices from the plan.
-- Preserve existing requirement, invariant, decision, and task IDs; link supersessions rather than renumbering.
+- Preserve existing requirement, invariant, decision, and task IDs; link supersessions rather than renumbering or deleting history.
 - Keep comments minimal. Explain only complex or non-obvious logic remaining after refactoring: the reason, invariant, or constraint.
 - Bound tasks with explicit acceptance criteria, dependencies, inputs, outputs, exclusions, and evidence. Use five estimated hours as a provisional splitting guideline when no project rule exists; document exceptions rather than inventing estimates.
 - Give interface/schema changes explicit tasks and compatibility or migration plans. Avoid treating every file as frozen.
@@ -36,19 +47,19 @@ Read [references/project-model.md](references/project-model.md) for the model, a
 | Outcomes and calibrated confidence | Evidence tied to exact input revisions |
 | Maps, indexes, summaries, agent adapters | Generated views of the authorities above |
 
-Default to `project.yaml`; JSON is also supported. Do not maintain two independently writable specifications. Keep execution state separately under `.project/`. A generated progress region in the plan may reflect state without rewriting intent.
+For a new project, default to `project.yaml`; JSON is also supported. For an accepted baseline, declare whether the model is authored or generated and preserve the baseline's established authority. Do not maintain two independently writable specifications. Keep execution state separately under `.project/`, while rendering the baseline's existing human-readable status view when it has one. A generated progress region in the plan may reflect state without rewriting intent.
 
 ## Initialize and maintain
 
-1. Read the supplied plan, applicable `AGENTS.md`, existing task/architecture conventions, and relevant working-tree changes. Do not assume mentioned external files are accessible.
+1. Read the supplied plan, applicable `AGENTS.md`, existing task/architecture conventions, accepted reference projects, and relevant working-tree changes. Do not assume mentioned external files are accessible. If a required baseline is inaccessible, stop before designing a replacement and request the source.
 2. Extract requirements, components, contracts, decisions, risks, gates, tasks, and criteria with source file/section references. Mark inferred and unresolved information. Translate prose into explicit logic obligations independently of current code.
-3. Validate IDs, references, dependency cycles, acceptance coverage, and scope. Use authorized defaults and ordinary implementation judgment. Block only work depending on a genuinely unresolved choice.
-4. Generate or update appropriate artifacts: shared `.agent/` instructions and thin tool adapters; architecture/API contracts; requirements; tasks; bundles; evidence locations; selected stack scaffold and real CI configuration when requested. Verify commands exist; keep unimplemented checks pending.
+3. Create or refresh the preservation baseline and classify proposed structural changes. Validate IDs, references, dependency cycles, acceptance coverage, scope, required artifacts, and protected conventions. Use authorized defaults and ordinary implementation judgment. Block only work depending on a genuinely unresolved choice or unapproved compatibility break.
+4. Generate or update appropriate artifacts without reducing accepted detail: shared `.agent/` instructions and thin tool adapters; architecture/API contracts; requirements; detailed task specifications; visible status/dependency indexes; technical notes; implementation-record templates; bundles; evidence locations; selected stack scaffold and real CI configuration when requested. Verify commands exist; keep unimplemented checks pending.
 5. Record generated-file ownership, managed regions, template versions, and input/output hashes. Reconcile edited generated regions; preserve human sections, source code, state, and historical evidence.
 6. On plan, code, dependency, analyzer, or policy changes, calculate affected dependencies and consumers. Mark dependent evidence stale and tasks needing revalidation. If impact is uncertain, invalidate conservatively.
 7. Regenerate indexes and progress summaries from records. Never silently change requirements, tests, or thresholds to make implementation pass.
 
-Build task bundles with objectives, exclusions, requirement/criterion IDs, exact inputs, global invariants, relevant contracts, dependency state, authorized decisions, verification needs, evidence outputs, and the current snapshot. Avoid requiring agents to rediscover the document graph.
+Build task specifications and bundles with objectives, exclusions, requirement/criterion IDs, dependencies and state, exact inputs and outputs, files or symbols, global invariants, relevant contracts, authorized decisions, verification commands, evidence outputs, stop conditions, and the current snapshot. Preserve the baseline's one-task-per-file and completion-record conventions when present. Avoid requiring agents to rediscover the document graph.
 
 ## Verify before advancement
 
@@ -66,10 +77,11 @@ Apply calibrated logic gates to tasks making code-behavior claims. For documenta
 
 ```bash
 python3 <skill-dir>/scripts/check_project.py validate project.yaml
+python3 <skill-dir>/scripts/check_project.py audit-preservation project.yaml --root .
 python3 <skill-dir>/scripts/check_project.py gate project.yaml .project/evidence/T-007.json --task T-007 --source-hash <current-source-snapshot-sha256>
 ```
 
-The helper validates structure and report metadata. Its gate is for automatic logic-verification decisions, not ordinary manual/document completion. It does not interpret prose, analyze ASTs, run tests, establish calibration, or authenticate artifacts. Inspect real runner outputs before trusting reports. The current source hash must come from the runner's complete input manifest, including uncommitted files and transitive dependencies; a commit ID alone is insufficient for a dirty tree.
+The helper validates structure and report metadata. `audit-preservation` checks that declared `preserve` and `enhance` artifact paths still exist after generation; it cannot judge semantic equivalence or user approval. Its gate is for automatic logic-verification decisions, not ordinary manual/document completion. It does not interpret prose, analyze ASTs, run tests, establish calibration, or authenticate artifacts. Inspect real runner outputs before trusting reports. The current source hash must come from the runner's complete input manifest, including uncommitted files and transitive dependencies; a commit ID alone is insufficient for a dirty tree.
 
 Exit codes: `0` valid/pass, `1` invalid/fail, `2` inconclusive/unusable input. YAML needs PyYAML; JSON uses the standard library. Report unavailable analyzers instead of claiming success.
 
