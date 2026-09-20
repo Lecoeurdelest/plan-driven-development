@@ -1,4 +1,14 @@
 interface:
-  display_name: "Plan-Driven Development"
-  short_description: "Initialize projects and keep plans aligned with code"
-  default_prompt: "Use $plan-driven-development to initialize or update this project from its plan and verify implementation alignment."
+  display_name: Plan-Driven Development
+  short_description: Initialize projects and keep plans aligned with code
+  default_prompt: Use $plan-driven-development to initialize or update this project
+    from its plan and verify implementation alignment.
+  icon_small: assets/icon.svg
+  icon_large: assets/icon.svg
+policy:
+  products:
+  - chatgpt
+  - codex
+  - api
+  - atlas
+  allow_implicit_invocation: true
