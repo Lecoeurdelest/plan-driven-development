@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "project": {
+    "id": "daily-checkin",
+    "plan_file": "plan.md"
+  },
+  "components": [
+    {
+      "id": "CMP-RULES",
+      "title": "Check-in rules"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D-001",
+      "title": "Use the home's time zone",
+      "status": "accepted"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "FR-01",
+      "title": "Do not report inactivity while monitoring was unavailable",
+      "risk": "critical",
+      "source": {
+        "file": "plan.md",
+        "section": "Check-in rules"
+      },
+      "acceptance": [
+        {
+          "id": "AC-01",
+          "statement": "At window end, with no activity and monitoring unavailable for more than 20% of the window, report unknown rather than inactivity.",
+          "verification": [
+            "static_flow",
+            "behavioral_test"
+          ]
+        }
+      ]
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Implement the check-in classification rule",
+      "requirement_ids": [
+        "FR-01"
+      ],
+      "component_ids": [
+        "CMP-RULES"
+      ],
+      "decision_ids": [
+        "D-001"
+      ],
+      "depends_on": [],
+      "acceptance_ids": [
+        "AC-01"
+      ],
+      "inputs": [
+        "plan.md"
+      ],
+      "outputs": [
+        "src/rules.py",
+        "tests/test_rules.py"
+      ],
+      "out_of_scope": [
+        "Delivery of notifications"
+      ]
+    }
+  ],
+  "verification": {
+    "thresholds": {
+      "standard": 0.95,
+      "critical": 0.99
+    },
+    "calibration_required_for_auto_advance": true,
+    "comments": "complex_logic_only",
+    "complexity": {
+      "cyclomatic_max": 10,
+      "cognitive_max": 15,
+      "nesting_max": 3
+    }
+  }
+}
+
