@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "task_id": "T-001",
+  "spec_hash": null,
+  "source_hash": null,
+  "calibration": {
+    "status": "unavailable",
+    "id": null,
+    "artifact": null,
+    "evaluator_version": null,
+    "applicable": false
+  },
+  "criteria": [
+    {
+      "id": "AC-01",
+      "status": "not_run",
+      "confidence": null,
+      "analysis_complete": false,
+      "checks": [
+        {
+          "method": "static_flow",
+          "status": "not_run",
+          "artifacts": []
+        },
+        {
+          "method": "behavioral_test",
+          "status": "not_run",
+          "artifacts": []
+        }
+      ]
+    }
+  ]
+}
+
