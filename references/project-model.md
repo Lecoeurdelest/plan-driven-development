@@ -15,7 +15,7 @@ Use one YAML/JSON object. Preserve extra project-specific fields. Keep execution
 | `tasks` | `id`, `title`, lists `requirement_ids`, `component_ids`, `decision_ids`, `depends_on`, `acceptance_ids` |
 | `verification` | `thresholds` for standard/critical, `calibration_required_for_auto_advance: true`, optional complexity/comment policies |
 
-Each task needs at least one requirement and criterion. Criterion references must belong to its requirements. Methods can be `static_flow`, `behavioral_test`, `device_observation`, `manual_review`, or `document_check`; require only applicable methods. Manual evidence does not manufacture automated alignment confidence.
+Each task needs at least one requirement and criterion. Criterion references must belong to its requirements. Methods can be `static_flow`, `behavioral_test`, `device_observation`, `manual_review`, or `document_check`; require only applicable methods. Use the bundled automatic logic gate for code-behavior claims. Document/manual tasks follow their own applicable completion policy; manual evidence does not manufacture automated alignment confidence.
 
 Add objectives, API/data contracts, invariant scopes, ownership, risks, release gates, non-goals, task inputs/outputs, test commands, estimates, explicit deferrals, and supersessions as needed. An unmapped requirement is a planning gap unless explicitly deferred or a non-implementation obligation.
 
