@@ -10,7 +10,6 @@ import re
 import sys
 
 
-STATUSES = {"pass", "fail", "inconclusive", "not_run"}
 RISKS = {"standard", "critical"}
 SHA256 = re.compile(r"[0-9a-f]{64}")
 
@@ -35,7 +34,10 @@ def load(path):
         import yaml
     except ImportError as exc:
         raise ValueError("YAML requires PyYAML; alternatively use JSON.") from exc
-    return yaml.safe_load(raw)
+    try:
+        return yaml.safe_load(raw)
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Invalid YAML: {exc}") from exc
 
 
 def validate_model(model):
@@ -70,12 +72,12 @@ def validate_model(model):
                 errors.append(f"{identifier}: title is required.")
 
     for identifier, decision in indexes["decisions"].items():
-        if decision.get("status") not in {"proposed", "accepted", "rejected", "superseded"}:
+        if not isinstance(decision.get("status"), str) or decision["status"] not in {"proposed", "accepted", "rejected", "superseded"}:
             errors.append(f"{identifier}: invalid decision status.")
 
     criteria = {}
     for identifier, requirement in indexes["requirements"].items():
-        if requirement.get("risk") not in RISKS:
+        if not isinstance(requirement.get("risk"), str) or requirement["risk"] not in RISKS:
             errors.append(f"{identifier}: risk must be standard or critical.")
         source = requirement.get("source")
         if not isinstance(source, dict) or not all(nonempty(source.get(k)) for k in ("file", "section")):
