@@ -4,6 +4,48 @@
     "id": "daily-checkin",
     "plan_file": "plan.md"
   },
+  "preservation": {
+    "baselines": [
+      {
+        "id": "BASE-001",
+        "source": "accepted-reference-project",
+        "revision": "reviewed-revision"
+      }
+    ],
+    "artifacts": [
+      {
+        "id": "ART-REQ",
+        "path": "docs/requirements/**/*.md",
+        "role": "human-readable requirements",
+        "disposition": "preserve"
+      },
+      {
+        "id": "ART-TASK",
+        "path": "docs/task/TASK-*.md",
+        "role": "detailed task specifications",
+        "disposition": "enhance"
+      },
+      {
+        "id": "ART-IMPL",
+        "path": "docs/implement/IMPL-TASK-*.md",
+        "role": "historical implementation records",
+        "disposition": "preserve"
+      }
+    ],
+    "conventions": [
+      "Stable task IDs are never renumbered.",
+      "A completed task keeps its implementation record if later superseded."
+    ],
+    "status_dimensions": [
+      "execution",
+      "relevance"
+    ],
+    "approval_required_for": [
+      "remove",
+      "semantic_change",
+      "authority_change"
+    ]
+  },
   "components": [
     {
       "id": "CMP-RULES",
