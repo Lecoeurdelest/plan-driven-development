@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate project structure and gate supplied evidence metadata."""
+"""Validate project structure, audit preservation, and gate evidence metadata."""
 
 import argparse
 import hashlib
@@ -11,6 +11,8 @@ import sys
 
 
 RISKS = {"standard", "critical"}
+PRESERVATION_DISPOSITIONS = {"preserve", "enhance", "supersede", "remove"}
+PROTECTED_CHANGES = {"remove", "semantic_change", "authority_change"}
 SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
@@ -38,6 +40,70 @@ def load(path):
         return yaml.safe_load(raw)
     except yaml.YAMLError as exc:
         raise ValueError(f"Invalid YAML: {exc}") from exc
+
+
+def validate_preservation(model, errors, used_ids):
+    preservation = model.get("preservation")
+    if preservation is None:
+        return
+    if not isinstance(preservation, dict):
+        errors.append("preservation must be an object.")
+        return
+
+    baselines = preservation.get("baselines")
+    if not isinstance(baselines, list) or not baselines:
+        errors.append("preservation.baselines must be a nonempty list.")
+    else:
+        for baseline in baselines:
+            if not isinstance(baseline, dict) or not all(nonempty(baseline.get(k)) for k in ("id", "source", "revision")):
+                errors.append("Every preservation baseline requires id, source, and revision.")
+                continue
+            identifier = baseline["id"]
+            if identifier in used_ids:
+                errors.append(f"Duplicate id: {identifier}.")
+            used_ids.add(identifier)
+
+    artifacts = preservation.get("artifacts")
+    artifact_ids, replacement_refs = set(), []
+    if not isinstance(artifacts, list) or not artifacts:
+        errors.append("preservation.artifacts must be a nonempty list.")
+    else:
+        for artifact in artifacts:
+            if not isinstance(artifact, dict) or not all(nonempty(artifact.get(k)) for k in ("id", "path", "role")):
+                errors.append("Every preserved artifact requires id, path, and role.")
+                continue
+            identifier = artifact["id"]
+            if identifier in used_ids:
+                errors.append(f"Duplicate id: {identifier}.")
+            used_ids.add(identifier)
+            artifact_ids.add(identifier)
+            path = Path(artifact["path"])
+            if path.is_absolute() or ".." in path.parts:
+                errors.append(f"{identifier}: preserved artifact path must stay within the project root.")
+            disposition = artifact.get("disposition")
+            if disposition not in PRESERVATION_DISPOSITIONS:
+                errors.append(f"{identifier}: invalid preservation disposition.")
+            if disposition in {"supersede", "remove"} and not nonempty(artifact.get("approval")):
+                errors.append(f"{identifier}: {disposition} requires explicit approval.")
+            if disposition == "supersede" and (not strings(artifact.get("replacement_ids")) or not artifact["replacement_ids"]):
+                errors.append(f"{identifier}: supersede requires replacement_ids.")
+            elif disposition == "supersede":
+                replacement_refs.append((identifier, artifact["replacement_ids"]))
+
+    for identifier, replacement_ids in replacement_refs:
+        for replacement_id in replacement_ids:
+            if replacement_id not in artifact_ids:
+                errors.append(f"{identifier}: unknown replacement artifact {replacement_id}.")
+
+    conventions = preservation.get("conventions")
+    if not strings(conventions) or not conventions or len(set(conventions)) != len(conventions):
+        errors.append("preservation.conventions must be unique nonempty strings.")
+    dimensions = preservation.get("status_dimensions")
+    if not strings(dimensions) or not {"execution", "relevance"}.issubset(set(dimensions)):
+        errors.append("preservation.status_dimensions must include execution and relevance.")
+    approvals = preservation.get("approval_required_for")
+    if not strings(approvals) or not PROTECTED_CHANGES.issubset(set(approvals)):
+        errors.append("preservation.approval_required_for must protect removal, semantic, and authority changes.")
 
 
 def validate_model(model):
@@ -70,6 +136,8 @@ def validate_model(model):
             indexes[kind][identifier] = item
             if not nonempty(item.get("title")):
                 errors.append(f"{identifier}: title is required.")
+
+    validate_preservation(model, errors, used_ids)
 
     for identifier, decision in indexes["decisions"].items():
         if not isinstance(decision.get("status"), str) or decision["status"] not in {"proposed", "accepted", "rejected", "superseded"}:
@@ -154,6 +222,28 @@ def validate_model(model):
         if policy.get("calibration_required_for_auto_advance") is not True:
             errors.append("This automatic gate requires calibration; manual policy uses a separate recorded workflow.")
     return errors, warnings
+
+
+def audit_preservation(model, root):
+    errors, warnings = validate_model(model)
+    preservation = model.get("preservation") if isinstance(model, dict) else None
+    if errors:
+        return {"status": "invalid", "errors": errors, "warnings": warnings, "checked": []}
+    if not isinstance(preservation, dict):
+        return {"status": "not_configured", "errors": [], "warnings": warnings,
+                "checked": [], "reason": "No preservation baseline is declared."}
+
+    project_root = Path(root)
+    checked, missing = [], []
+    for artifact in preservation["artifacts"]:
+        if artifact["disposition"] not in {"preserve", "enhance"}:
+            continue
+        matches = sorted(str(path.relative_to(project_root)) for path in project_root.glob(artifact["path"]))
+        checked.append({"id": artifact["id"], "path": artifact["path"], "matches": matches})
+        if not matches:
+            missing.append(f"{artifact['id']}: no artifact matches {artifact['path']}.")
+    return {"status": "invalid" if missing else "valid", "errors": missing,
+            "warnings": warnings, "checked": checked}
 
 
 def evaluate_gate(model, report, task_id, spec_hash, source_hash):
@@ -262,6 +352,9 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     validate = commands.add_parser("validate")
     validate.add_argument("model")
+    audit = commands.add_parser("audit-preservation")
+    audit.add_argument("model")
+    audit.add_argument("--root", default=".")
     gate = commands.add_parser("gate")
     gate.add_argument("model")
     gate.add_argument("report")
@@ -274,6 +367,9 @@ def main():
             errors, warnings = validate_model(model)
             result = {"status": "invalid" if errors else "valid", "errors": errors, "warnings": warnings}
             code = 1 if errors else 0
+        elif args.command == "audit-preservation":
+            result = audit_preservation(model, args.root)
+            code = {"valid": 0, "invalid": 1, "not_configured": 2}[result["status"]]
         else:
             spec_hash = hashlib.sha256(Path(args.model).read_bytes()).hexdigest()
             result = evaluate_gate(model, load(args.report), args.task, spec_hash, args.source_hash)
