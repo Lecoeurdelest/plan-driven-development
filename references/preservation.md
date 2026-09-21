@@ -35,13 +35,15 @@ When the baseline separates human-readable layers, retain them:
 
 1. A navigable documentation index or architecture map.
 2. Functional and non-functional requirement files explaining intent and acceptance.
-3. A visible task index with stable IDs, dependencies, milestones, fallbacks, and current relevance.
+3. A visible task index with stable IDs, dependencies, milestones, fallbacks, current relevance, and the accepted status-marker convention. For new defaults, use the three-marker projection in [task-status.md](task-status.md).
 4. One detailed task specification per task with objective, scope, exclusions, requirement links, files or symbols, acceptance criteria, implementation notes, and completion checks.
 5. Technical documents for architecture, contracts, data, interfaces, and risky behavior.
 6. One implementation record per completed task with what was built, criterion results, evidence, deviations, known gaps, invariant checks, and changed files.
 7. Original machine evidence stored separately from prose.
 
 New machine-readable state and generated bundles should feed these views. They must not replace them with a status-only list or a short roadmap.
+
+Treat a marker-system change as a semantic change. Preserve an accepted project's existing symbols unless the user approves migration. During an approved migration, map execution and relevance separately instead of collapsing completed-but-superseded work into one symbol.
 
 ## Keep state dimensions distinct
 
@@ -64,4 +66,3 @@ Before writing:
 6. Check semantic drift manually: stale counts, broken links, status contradictions, orphaned implementation records, missing evidence, obsolete technical notes, and authority conflicts.
 
 Fix detected drift inside the preserved structure. Do not use drift as justification to discard the structure.
-
