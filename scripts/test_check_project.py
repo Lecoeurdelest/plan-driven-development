@@ -4,7 +4,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from check_project import audit_preservation, evaluate_gate, validate_model
+from check_project import audit_preservation, audit_task_status_index, evaluate_gate, validate_model
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -102,6 +102,7 @@ class ProjectChecks(unittest.TestCase):
             paths = [
                 root / "docs/requirements/functional/FR-01.md",
                 root / "docs/task/TASK-001.md",
+                root / "docs/task/README.md",
                 root / "docs/implement/IMPL-TASK-001.md",
             ]
             for path in paths:
@@ -112,6 +113,55 @@ class ProjectChecks(unittest.TestCase):
             result = audit_preservation(self.model, root)
             self.assertEqual(result["status"], "invalid")
             self.assertTrue(any("ART-IMPL" in issue for issue in result["errors"]))
+
+    def test_task_status_index_accepts_all_execution_states(self):
+        rows = [
+            "| [] | `TASK-001` | Todo | `todo` | `current` | — | Next input | — |",
+            "| [] | `TASK-002` | Ready | `ready` | `current` | TASK-001 | Dependencies met | — |",
+            "| [!] | `TASK-003` | Active | `in_progress` | `current` | TASK-002 | Implementing parser | — |",
+            "| [!] | `TASK-004` | Verify | `verifying` | `current` | TASK-003 | Running integration checks | — |",
+            "| [!] | `TASK-005` | Blocked | `blocked` | `current` | TASK-004 | Waiting for schema decision | — |",
+            "| [!] | `TASK-006` | Revalidate | `needs_revalidation` | `current` | TASK-005 | Dependency changed | old-run.json |",
+            "| [x] | `TASK-007` | Done | `done` | `superseded` | TASK-006 | Replaced later | IMPL-TASK-007.md |",
+        ]
+        content = "\n".join([
+            "| Status | ID | Title | Execution | Relevance | Depends on | Detail | Evidence |",
+            "|---|---|---|---|---|---|---|---|",
+            *rows,
+        ])
+        with tempfile.TemporaryDirectory() as directory:
+            index = Path(directory) / "README.md"
+            index.write_text(content, encoding="utf-8")
+            result = audit_task_status_index(index)
+        self.assertEqual(result["status"], "valid")
+        self.assertEqual(len(result["checked"]), 7)
+
+    def test_task_status_index_rejects_drift(self):
+        content = "\n".join([
+            "| Status | ID | Title | Execution | Relevance | Detail | Evidence |",
+            "|---|---|---|---|---|---|---|",
+            "| [x] | TASK-001 | Wrong marker | todo | current | — | proof.json |",
+            "| [!] | TASK-001 | Duplicate blocked | blocked | current | — | — |",
+            "| [x] | TASK-003 | No evidence | done | current | Complete | — |",
+        ])
+        with tempfile.TemporaryDirectory() as directory:
+            index = Path(directory) / "README.md"
+            index.write_text(content, encoding="utf-8")
+            result = audit_task_status_index(index)
+        issues = " ".join(result["errors"])
+        self.assertEqual(result["status"], "invalid")
+        self.assertIn("must render", issues)
+        self.assertIn("Duplicate task status ID", issues)
+        self.assertIn("requires an attention detail", issues)
+        self.assertIn("requires current evidence", issues)
+
+    def test_task_status_index_requires_contract_columns(self):
+        with tempfile.TemporaryDirectory() as directory:
+            index = Path(directory) / "README.md"
+            index.write_text("| Status | ID |\n|---|---|\n| [] | TASK-001 |\n", encoding="utf-8")
+            result = audit_task_status_index(index)
+        self.assertEqual(result["status"], "invalid")
+        self.assertTrue(any("missing columns" in issue for issue in result["errors"]))
 
     def test_preservation_audit_can_be_unconfigured(self):
         self.model.pop("preservation")
