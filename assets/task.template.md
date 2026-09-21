@@ -64,5 +64,4 @@ superseded_by: null
 
 1. Run the listed checks and preserve their original outputs.
 2. Write the implementation record from `implementation.template.md` or the accepted project template.
-3. Update the visible task/status index without deleting history.
-
+3. Update the execution record, then regenerate the visible `[]`, `[!]`, or `[x]` marker from `task-status.md` without deleting history.
