@@ -46,15 +46,17 @@ Reuse an existing layout and preserve its accepted artifact relationships. New p
 - `.project/evidence/<task-id>/<run-id>/`: reports and original artifacts.
 - `.agent/AGENTS.md`, `.agent/rules/`, `.agent/context/`, `.agent/index.json`: shared agent contract and map.
 - Root/tool instruction files: thin adapters to shared instructions.
-- `docs/requirements/`, `docs/task/`, `docs/technical/`, `docs/implement/`: readable specifications and implementation records.
+- `docs/requirements/`, `docs/task/`, `docs/technical/`, `docs/implement/`: readable specifications, a visible task index, and implementation records.
 
-When an accepted baseline uses a navigable documentation index, visible task/status table, one task specification per ID, technical notes, and one implementation record per completed task, retain that contract. If a new project has no templates, adapt the bundled task and implementation templates. Generate detailed technical prose when the plan supplies concrete content or a task needs it. Avoid speculative placeholder documents. Never generate completed implementation logs or passing evidence for future code.
+When an accepted baseline uses a navigable documentation index, visible task/status table, one task specification per ID, technical notes, and one implementation record per completed task, retain that contract. If a new project has no templates, adapt the bundled task-index, task, and implementation templates. Generate detailed technical prose when the plan supplies concrete content or a task needs it. Avoid speculative placeholder documents. Never generate completed implementation logs or passing evidence for future code.
 
 ## Task execution
 
 A task specification or bundle contains ID; current model/source snapshot; objective; exclusions; requirement and acceptance IDs; dependencies and state; decisions; exact inputs, outputs, files, or symbols; global invariants; relevant contracts; output scope; verification commands or pending analyzer needs; required evidence; stop conditions.
 
 A ready task has sufficient inputs, satisfied dependencies, accepted required decisions, and observable criteria. Execution can be `todo -> ready -> in_progress -> verifying -> done`, with `blocked` and `needs_revalidation` retaining reasons and history. Track relevance separately as `current`, `superseded`, or `retired`; `done` and `superseded` can both be true for the same historical task.
+
+Project execution into exactly three visible markers: `[]` for `todo` and `ready`; `[!]` for `in_progress`, `verifying`, `blocked`, and `needs_revalidation`; `[x]` for `done`. The marker is a generated view, not another writable state. Require an attention detail for `[!]` and current evidence for `[x]`. Keep relevance in its own column so supersession never erases whether work was completed. See [task-status.md](task-status.md).
 
 Keep readiness in execution records. The bundled gate evaluates task evidence and decision prerequisites; it does not load dependency completion state. Check predecessor completion/current evidence before starting or advancing dependent tasks.
 
