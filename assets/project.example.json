@@ -26,6 +26,12 @@
         "disposition": "enhance"
       },
       {
+        "id": "ART-TASK-INDEX",
+        "path": "docs/task/README.md",
+        "role": "visible task status and dependency index",
+        "disposition": "enhance"
+      },
+      {
         "id": "ART-IMPL",
         "path": "docs/implement/IMPL-TASK-*.md",
         "role": "historical implementation records",
@@ -34,7 +40,8 @@
     ],
     "conventions": [
       "Stable task IDs are never renumbered.",
-      "A completed task keeps its implementation record if later superseded."
+      "A completed task keeps its implementation record if later superseded.",
+      "Visible task indexes project execution as [], [!], or [x] while relevance remains separate."
     ],
     "status_dimensions": [
       "execution",
