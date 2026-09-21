@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate project structure, audit preservation, and gate evidence metadata."""
+"""Validate project structure, task status, preservation, and evidence metadata."""
 
 import argparse
 import hashlib
@@ -13,6 +13,17 @@ import sys
 RISKS = {"standard", "critical"}
 PRESERVATION_DISPOSITIONS = {"preserve", "enhance", "supersede", "remove"}
 PROTECTED_CHANGES = {"remove", "semantic_change", "authority_change"}
+TASK_STATUS_MARKERS = {
+    "todo": "[]",
+    "ready": "[]",
+    "in_progress": "[!]",
+    "verifying": "[!]",
+    "blocked": "[!]",
+    "needs_revalidation": "[!]",
+    "done": "[x]",
+}
+TASK_RELEVANCE = {"current", "superseded", "retired"}
+TASK_ID = re.compile(r"\b[A-Za-z][A-Za-z0-9_.]*-[A-Za-z0-9][A-Za-z0-9_.-]*\b")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
@@ -224,6 +235,93 @@ def validate_model(model):
     return errors, warnings
 
 
+def markdown_cells(line):
+    line = line.strip()
+    if not line.startswith("|") or not line.endswith("|"):
+        return None
+    return [cell.strip() for cell in line[1:-1].split("|")]
+
+
+def plain_cell(cell):
+    return cell.replace("`", "").replace("*", "").strip()
+
+
+def meaningful_cell(cell):
+    value = plain_cell(cell).lower()
+    return bool(value) and value not in {"-", "—", "n/a", "none", "pending"} and not (
+        value.startswith("<") and value.endswith(">")
+    )
+
+
+def audit_task_status_index(path):
+    lines = Path(path).read_text(encoding="utf-8").splitlines()
+    errors, warnings, checked = [], [], []
+    required = {"status", "id", "execution", "relevance", "detail", "evidence"}
+    table_found, seen = False, set()
+    index = 0
+    while index < len(lines):
+        header = markdown_cells(lines[index])
+        if not header:
+            index += 1
+            continue
+        names = [plain_cell(cell).lower() for cell in header]
+        if "status" not in names or "id" not in names:
+            index += 1
+            continue
+        table_found = True
+        missing = sorted(required - set(names))
+        if missing:
+            errors.append("Task status table is missing columns: " + ", ".join(missing) + ".")
+            index += 1
+            continue
+        columns = {name: names.index(name) for name in required}
+        index += 1
+        separator = markdown_cells(lines[index]) if index < len(lines) else None
+        if not separator or len(separator) != len(header) or not all(
+                re.fullmatch(r":?-{3,}:?", cell.strip()) for cell in separator):
+            errors.append("Task status table requires a Markdown separator row.")
+            continue
+        index += 1
+        while index < len(lines):
+            row = markdown_cells(lines[index])
+            if not row:
+                break
+            index += 1
+            if len(row) != len(header):
+                errors.append(f"Task status row {index} has {len(row)} cells; expected {len(header)}.")
+                continue
+            identifier_match = TASK_ID.search(plain_cell(row[columns["id"]]))
+            if identifier_match is None:
+                errors.append(f"Task status row {index} has no stable task ID.")
+                continue
+            identifier = identifier_match.group(0)
+            if identifier in seen:
+                errors.append(f"Duplicate task status ID: {identifier}.")
+            seen.add(identifier)
+            marker = plain_cell(row[columns["status"]])
+            execution = plain_cell(row[columns["execution"]]).lower()
+            relevance = plain_cell(row[columns["relevance"]]).lower()
+            expected = TASK_STATUS_MARKERS.get(execution)
+            if marker not in set(TASK_STATUS_MARKERS.values()):
+                errors.append(f"{identifier}: invalid task marker {marker or '<empty>'}.")
+            elif expected is None:
+                errors.append(f"{identifier}: invalid execution state {execution or '<empty>'}.")
+            elif marker != expected:
+                errors.append(f"{identifier}: {execution} must render as {expected}, not {marker}.")
+            if relevance not in TASK_RELEVANCE:
+                errors.append(f"{identifier}: invalid relevance {relevance or '<empty>'}.")
+            if marker == "[!]" and not meaningful_cell(row[columns["detail"]]):
+                errors.append(f"{identifier}: [!] requires an attention detail.")
+            if marker == "[x]" and not meaningful_cell(row[columns["evidence"]]):
+                errors.append(f"{identifier}: [x] requires current evidence.")
+            checked.append({"id": identifier, "marker": marker, "execution": execution,
+                            "relevance": relevance})
+    if not table_found:
+        errors.append("No task status table with Status and ID columns was found.")
+    return {"status": "invalid" if errors else "valid", "errors": errors,
+            "warnings": warnings, "checked": checked}
+
+
 def audit_preservation(model, root):
     errors, warnings = validate_model(model)
     preservation = model.get("preservation") if isinstance(model, dict) else None
@@ -355,6 +453,8 @@ def main():
     audit = commands.add_parser("audit-preservation")
     audit.add_argument("model")
     audit.add_argument("--root", default=".")
+    status_audit = commands.add_parser("audit-task-status")
+    status_audit.add_argument("index")
     gate = commands.add_parser("gate")
     gate.add_argument("model")
     gate.add_argument("report")
@@ -362,7 +462,11 @@ def main():
     gate.add_argument("--source-hash", required=True)
     args = parser.parse_args()
     try:
-        model = load(args.model)
+        if args.command == "audit-task-status":
+            result = audit_task_status_index(args.index)
+            code = 1 if result["status"] == "invalid" else 0
+        else:
+            model = load(args.model)
         if args.command == "validate":
             errors, warnings = validate_model(model)
             result = {"status": "invalid" if errors else "valid", "errors": errors, "warnings": warnings}
@@ -370,7 +474,7 @@ def main():
         elif args.command == "audit-preservation":
             result = audit_preservation(model, args.root)
             code = {"valid": 0, "invalid": 1, "not_configured": 2}[result["status"]]
-        else:
+        elif args.command == "gate":
             spec_hash = hashlib.sha256(Path(args.model).read_bytes()).hexdigest()
             result = evaluate_gate(model, load(args.report), args.task, spec_hash, args.source_hash)
             code = {"pass": 0, "fail": 1, "inconclusive": 2}[result["status"]]
