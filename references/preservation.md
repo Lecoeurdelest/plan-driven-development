@@ -14,7 +14,7 @@ Record the exact source and revision inspected. Inventory:
 - implementation records, machine evidence, deviations, known gaps, invariant checks, and changed-file lists;
 - task-to-implementation-to-evidence relationships;
 - supersession history and which parts survive a replacement;
-- agent rules, context, workflows, and thin adapters.
+- agent rules, context, workflows, and thin adapters, whichever host wrote them — see [agent-contract.md](agent-contract.md).
 
 Do not reduce an accepted baseline to the smallest common schema. The common model is an index and validation surface; it does not erase richer project-specific fields or human-readable artifacts.
 

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "canonical": ".agent/AGENTS.md",
+  "rules": [
+    ".agent/rules/interfaces.md"
+  ],
+  "context": [
+    ".agent/context/architecture.md"
+  ],
+  "documents": {
+    "plan": "plan.md",
+    "model": "project.yaml",
+    "state": ".project/state.json",
+    "requirements": "docs/requirements/",
+    "task_index": "docs/task/README.md",
+    "tasks": "docs/task/TASK-*.md",
+    "technical": "docs/technical/",
+    "implementation": "docs/implement/",
+    "bundles": ".project/bundles/",
+    "evidence": ".project/evidence/"
+  },
+  "adapters": [
+    {
+      "id": "codex",
+      "host": "Codex CLI",
+      "path": "AGENTS.md",
+      "kind": "file",
+      "source_hash": null
+    },
+    {
+      "id": "claude",
+      "host": "Claude Code",
+      "path": "CLAUDE.md",
+      "kind": "file",
+      "source_hash": null
+    },
+    {
+      "id": "copilot",
+      "host": "GitHub Copilot",
+      "path": ".github/copilot-instructions.md",
+      "kind": "file",
+      "source_hash": null
+    }
+  ]
+}

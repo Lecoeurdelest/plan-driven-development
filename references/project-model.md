@@ -44,8 +44,8 @@ Reuse an existing layout and preserve its accepted artifact relationships. New p
 - `.project/generated-manifest.json`: managed outputs/regions, versions, hashes.
 - `.project/bundles/<task-id>.md`: exact task context.
 - `.project/evidence/<task-id>/<run-id>/`: reports and original artifacts.
-- `.agent/AGENTS.md`, `.agent/rules/`, `.agent/context/`, `.agent/index.json`: shared agent contract and map.
-- Root/tool instruction files: thin adapters to shared instructions.
+- `.agent/AGENTS.md`, `.agent/rules/`, `.agent/context/`, `.agent/index.json`: the one canonical agent contract and its map.
+- Root and tool instruction files (`AGENTS.md`, `CLAUDE.md`, `.cursor/rules/`, `.github/copilot-instructions.md`, `GEMINI.md`): generated thin adapters pointing at the canonical contract, one per host the project actually uses. See [agent-contract.md](agent-contract.md).
 - `docs/requirements/`, `docs/task/`, `docs/technical/`, `docs/implement/`: readable specifications, a visible task index, and implementation records.
 
 When an accepted baseline uses a navigable documentation index, visible task/status table, one task specification per ID, technical notes, and one implementation record per completed task, retain that contract. If a new project has no templates, adapt the bundled task-index, task, and implementation templates. Generate detailed technical prose when the plan supplies concrete content or a task needs it. Avoid speculative placeholder documents. Never generate completed implementation logs or passing evidence for future code.
