@@ -89,6 +89,14 @@ The helper validates structure and report metadata. `audit-preservation` checks 
 
 Exit codes: `0` valid/pass, `1` invalid/fail, `2` inconclusive/unusable input. YAML needs PyYAML; JSON uses the standard library. Report unavailable analyzers instead of claiming success.
 
+## Host packaging
+
+This skill's own per-host manifests are generated from `.agent/manifest.yaml`; see
+`agents/README.md` in this repository. Do not hand-edit `agents/openai.yaml`,
+`.claude-plugin/plugin.json`, or `gemini-extension.json`. Apply the same rule to a
+project this skill generates: one neutral source, one generated file per host, and a
+`--check` mode in CI so a stale manifest fails the build rather than drifting quietly.
+
 ## Scope and delivery
 
 Maintain alignment during requested work and task/plan updates. The skill does not create a background service or scheduled task. Configure ongoing automation only when requested. Skill installation does not authorize deployments, publication, purchases, or messages to others.

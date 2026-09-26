@@ -1,0 +1,5 @@
+{
+  "name": "plan-driven-development",
+  "version": "0.1.0",
+  "description": "Initialize software projects from detailed plans and continuously align requirements, architecture, tasks, code, and verification evidence while preserving accepted project conventions."
+}

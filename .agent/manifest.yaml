@@ -1,0 +1,75 @@
+# Canonical, platform-neutral skill manifest.
+# Every per-host manifest in this repository is generated from this file.
+# Regenerate: python3 scripts/render_adapters.py --check | --write
+#
+# Do not add a target without a citation to that host's current official schema.
+# Field names differ per host on purpose: each renderer emits only what its host
+# actually reads, in the format and at the path that host requires.
+schema_version: 1
+
+skill:
+  id: plan-driven-development
+  display_name: Plan-Driven Development
+  # ASSUMPTION: no release has been tagged. Set a real version before publishing.
+  version: 0.1.0
+  short_description: Initialize projects and keep plans aligned with code
+  description: >-
+    Initialize software projects from detailed plans and continuously align
+    requirements, architecture, tasks, code, and verification evidence while
+    preserving accepted project conventions.
+  entrypoint: SKILL.md
+  icon: assets/icon.svg
+  keywords: [planning, requirements, traceability, verification, agents]
+  repository: https://github.com/Lecoeurdelest/plan-driven-development
+  license: null
+  author: null
+
+invocation:
+  allow_implicit: true
+  # A verb phrase. Adapters may prepend a host-specific invocation prefix.
+  default_prompt: >-
+    initialize or update this project from its plan and verify implementation
+    alignment.
+
+# Files and directories that make up the skill payload, relative to the repository
+# root. A host whose layout differs from this one gets a built distribution rather
+# than a second copy checked into the tree; see packaging below.
+payload:
+- SKILL.md
+- references/
+- assets/
+- scripts/
+
+# Payload entries to leave out of a built distribution: repository tooling that is
+# not part of the installed skill.
+payload_exclude:
+- scripts/render_adapters.py
+- scripts/test_check_project.py
+
+targets:
+  openai:
+    path: agents/openai.yaml
+    format: openai-skill-manifest
+    layout: repo-root
+    products: [chatgpt, codex, api, atlas]
+    prompt_prefix: "Use $plan-driven-development to "
+  claude-code:
+    path: .claude-plugin/plugin.json
+    format: claude-plugin-manifest
+    layout: repo-root
+    note: >-
+      Only name is required. A plugin with SKILL.md at its root, no skills/ and
+      no skills key loads as a single skill, so the repository works in place and
+      no skills key is emitted.
+  gemini-cli:
+    path: gemini-extension.json
+    format: gemini-extension-manifest
+    # Gemini CLI discovers skills only at skills/<name>/SKILL.md, which the
+    # repository root does not satisfy. Build a distribution instead of checking
+    # in a second copy whose relative links would point outside the skill:
+    #   python3 scripts/render_adapters.py --package gemini-cli
+    layout: skill-subdirectory
+    note: >-
+      contextFileName is omitted deliberately: this repository ships no
+      extension-level context file, and GEMINI.md at a project root belongs to
+      the project agent contract, not to this manifest.

@@ -1,0 +1,14 @@
+{
+  "name": "plan-driven-development",
+  "displayName": "Plan-Driven Development",
+  "version": "0.1.0",
+  "description": "Initialize software projects from detailed plans and continuously align requirements, architecture, tasks, code, and verification evidence while preserving accepted project conventions.",
+  "repository": "https://github.com/Lecoeurdelest/plan-driven-development",
+  "keywords": [
+    "planning",
+    "requirements",
+    "traceability",
+    "verification",
+    "agents"
+  ]
+}
