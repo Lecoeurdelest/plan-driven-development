@@ -23,6 +23,15 @@ TASK_STATUS_MARKERS = {
     "done": "[x]",
 }
 TASK_RELEVANCE = {"current", "superseded", "retired"}
+AGENT_CANONICAL = ".agent/AGENTS.md"
+AGENT_INDEX = ".agent/index.json"
+ADAPTER_KINDS = {"file", "symlink"}
+GENERATED_REGION = re.compile(
+    r"<!--\s*pdd:generated:begin\s+id=(?P<id>[^\s>]+)(?P<attrs>[^>]*?)-->"
+    r"(?P<body>.*?)"
+    r"<!--\s*pdd:generated:end\s+id=(?P=id)\s*-->",
+    re.DOTALL,
+)
 TASK_ID = re.compile(r"\b[A-Za-z][A-Za-z0-9_.]*-[A-Za-z0-9][A-Za-z0-9_.-]*\b")
 SHA256 = re.compile(r"[0-9a-f]{64}")
 
@@ -344,6 +353,102 @@ def audit_preservation(model, root):
             "warnings": warnings, "checked": checked}
 
 
+def audit_agent_contract(root):
+    """Check the canonical .agent/ contract and its generated adapters."""
+    project_root = Path(root)
+    errors, warnings, checked = [], [], []
+
+    index_path = project_root / AGENT_INDEX
+    if not index_path.is_file():
+        return {"status": "not_configured", "errors": [], "warnings": warnings, "checked": [],
+                "reason": f"No {AGENT_INDEX} declares an agent contract."}
+
+    canonical = project_root / AGENT_CANONICAL
+    if not canonical.is_file():
+        errors.append(f"Missing canonical instruction file {AGENT_CANONICAL}.")
+    elif not canonical.read_text(encoding="utf-8").strip():
+        errors.append(f"{AGENT_CANONICAL} is empty.")
+    try:
+        index = json.loads(index_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return {"status": "invalid", "errors": errors + [f"{AGENT_INDEX} is unreadable: {exc}"],
+                "warnings": warnings, "checked": checked}
+
+    if not isinstance(index, dict) or index.get("schema_version") != 1:
+        errors.append(f"{AGENT_INDEX} requires schema_version 1.")
+    if index.get("canonical") not in (None, AGENT_CANONICAL):
+        errors.append(f"{AGENT_INDEX} declares canonical {index.get('canonical')!r}; expected {AGENT_CANONICAL}.")
+
+    for key in ("rules", "context"):
+        listed = index.get(key, [])
+        if not isinstance(listed, list) or not all(nonempty(item) for item in listed):
+            errors.append(f"{AGENT_INDEX}.{key} must be a list of paths.")
+            continue
+        for relative in listed:
+            if not (project_root / relative).exists():
+                errors.append(f"{key}: {relative} is listed in the index but missing.")
+
+    adapters = index.get("adapters")
+    if not isinstance(adapters, list):
+        errors.append(f"{AGENT_INDEX}.adapters must be a list.")
+        adapters = []
+    if not adapters:
+        warnings.append("No adapters are declared; only hosts reading .agent/ directly are covered.")
+
+    seen = set()
+    for adapter in adapters:
+        if not isinstance(adapter, dict) or not all(nonempty(adapter.get(k)) for k in ("id", "path")):
+            errors.append("Every adapter requires a nonempty id and path.")
+            continue
+        identifier, relative = adapter["id"], adapter["path"]
+        if identifier in seen:
+            errors.append(f"Duplicate adapter id: {identifier}.")
+        seen.add(identifier)
+        kind = adapter.get("kind", "file")
+        if kind not in ADAPTER_KINDS:
+            errors.append(f"{identifier}: kind must be one of {sorted(ADAPTER_KINDS)}.")
+
+        path = project_root / relative
+        record = {"id": identifier, "path": relative, "kind": kind}
+        checked.append(record)
+
+        if not path.exists():
+            errors.append(f"{identifier}: declared adapter {relative} is missing.")
+            continue
+        if kind == "symlink":
+            if not path.is_symlink():
+                errors.append(f"{identifier}: {relative} is declared a symlink but is a regular file.")
+            continue
+        if path.is_symlink():
+            warnings.append(f"{identifier}: {relative} is a symlink but declared a file.")
+
+        text = path.read_text(encoding="utf-8")
+        regions = GENERATED_REGION.findall(text)
+        ids = {match[0] for match in regions}
+        if not regions:
+            errors.append(f"{identifier}: {relative} has no pdd:generated managed region.")
+        elif identifier not in ids:
+            errors.append(f"{identifier}: {relative} has managed regions {sorted(ids)} but not {identifier}.")
+        record["managed_regions"] = sorted(ids)
+
+        if AGENT_CANONICAL not in text:
+            errors.append(f"{identifier}: {relative} never points at {AGENT_CANONICAL}.")
+        declared = adapter.get("source_hash")
+        if declared is None:
+            warnings.append(f"{identifier}: no source_hash recorded; divergence cannot be detected.")
+        elif not nonempty(declared) or not SHA256.fullmatch(declared.strip()):
+            errors.append(f"{identifier}: source_hash must be a SHA-256 hex digest or null.")
+        elif canonical.is_file():
+            actual = hashlib.sha256(canonical.read_bytes()).hexdigest()
+            record["source_hash_current"] = actual
+            if actual != declared.strip():
+                errors.append(f"{identifier}: {relative} was generated from a different "
+                              f"{AGENT_CANONICAL}; regenerate it.")
+
+    return {"status": "invalid" if errors else "valid", "errors": errors,
+            "warnings": warnings, "checked": checked}
+
+
 def evaluate_gate(model, report, task_id, spec_hash, source_hash):
     failures, blockers, confidences = [], [], []
 
@@ -455,6 +560,8 @@ def main():
     audit.add_argument("--root", default=".")
     status_audit = commands.add_parser("audit-task-status")
     status_audit.add_argument("index")
+    agent_audit = commands.add_parser("audit-agent-contract")
+    agent_audit.add_argument("--root", default=".")
     gate = commands.add_parser("gate")
     gate.add_argument("model")
     gate.add_argument("report")
@@ -465,6 +572,9 @@ def main():
         if args.command == "audit-task-status":
             result = audit_task_status_index(args.index)
             code = 1 if result["status"] == "invalid" else 0
+        elif args.command == "audit-agent-contract":
+            result = audit_agent_contract(args.root)
+            code = {"valid": 0, "invalid": 1, "not_configured": 2}[result["status"]]
         else:
             model = load(args.model)
         if args.command == "validate":
